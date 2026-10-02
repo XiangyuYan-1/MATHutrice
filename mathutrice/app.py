@@ -140,8 +140,8 @@ from mathutrice.fonctions_python.chatbot import (  # noqa: E402
     chat_stream_with_history,
     reset_conversation,
 )
+from mathutrice.referentiel import REFERENTIEL  # noqa: E402
 from mathutrice.fonctions_python.main import (  # noqa: E402
-    REFERENTIEL,
     generate_mixed_test,
 )
 from mathutrice.fonctions_python.session_generator import (  # noqa: E402
@@ -160,7 +160,7 @@ from mathutrice.fonctions_python.type_questions.qro_generator import (  # noqa: 
     evaluate_answer,
     generate_qro_test,
 )
-from mathutrice.lacune_evaluation.LLM_as_Evaluator import (  # noqa: E402
+from mathutrice.fonctions_python.LLM_as_Evaluator import (  # noqa: E402
     diagnostiquer_depuis_competence,
 )
 
