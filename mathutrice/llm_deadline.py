@@ -40,7 +40,7 @@ class LLMDeadline:
 
         try:
             response = (
-                self._client.with_options(timeout=remaining, max_retries=0)
+                self._client.with_options(timeout=300.0, max_retries=0)
                 .chat.completions.create(model=self._model, messages=messages)
             )
         except (APITimeoutError, TimeoutError) as exc:
