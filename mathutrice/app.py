@@ -34,6 +34,9 @@ from datetime import datetime, timedelta
 
 load_dotenv()
 
+# Importing the seed performs an idempotent empty-database check at startup.
+import mathutrice.fonctions_python.seed  # noqa: E402, F401
+
 
 # ------------------------------------------------------------------
 # Referentiel
