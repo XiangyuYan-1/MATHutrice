@@ -198,21 +198,27 @@ def evaluate_answer(q: dict, user_answer: str) -> tuple[bool, str]:
 #     return generate_test(notion, niveau, n, generate_qro_question)
 
 
-def generate_qro_question(notion_nom: str, competence: dict) -> dict | None:
+def generate_qro_question(
+    notion_nom: str, competence: dict, deadline=None
+) -> dict | None:
     """Génère une question QRO validée à partir d'une compétence déjà choisie."""
 
     prompt = build_prompt(notion_nom=notion_nom, competence=competence)
 
-    return call_mistral(prompt, notion_nom, parse_and_validate)
+    return call_mistral(
+        prompt, notion_nom, parse_and_validate, deadline=deadline
+    )
 
 
-def generate_qro_test(notion_nom: str, competences: list[dict]) -> list[dict]:
+def generate_qro_test(
+    notion_nom: str, competences: list[dict], deadline=None
+) -> list[dict]:
     """Génère un test QRO à partir d'une liste de compétences déjà choisies."""
 
     questions = []
 
     for competence in competences:
-        question = generate_qro_question(notion_nom, competence)
+        question = generate_qro_question(notion_nom, competence, deadline=deadline)
 
         if question is not None:
             question["competence_cible"] = competence

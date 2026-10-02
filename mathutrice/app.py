@@ -138,6 +138,7 @@ elif DEV_LOGIN_KEY:
 # Refuse de démarrer sans LLM_BASE_URL, LLM_API_KEY et LLM_MODEL.
 # Tout ce qui suit importe le client LLM, d'où la place de ces imports.
 from mathutrice.llm_client import client, MODEL  # noqa: E402
+from mathutrice.llm_deadline import LLMDeadline  # noqa: E402
 from mathutrice.fonctions_python.chatbot import (  # noqa: E402
     chat,
     chat_stream_with_history,
@@ -1987,6 +1988,7 @@ async def next_targeted_endpoint(
 
         notion_data = build_notion_data_with_scores(data.notion_key, sso_id, session)
         notion_nom = notion_data["notion_nom"]
+        deadline = LLMDeadline(client, MODEL)
 
         comp = next(
             (
@@ -2175,6 +2177,7 @@ async def evaluation_endpoint(
             n_qro=split(n_bas)[1],
             n_steps=split(n_bas)[2],
             notion_data_override=notion_data,
+            deadline=deadline,
         )
 
         q_sol = generate_mixed_test(
@@ -2184,6 +2187,7 @@ async def evaluation_endpoint(
             n_qro=split(n_sol)[1],
             n_steps=split(n_sol)[2],
             notion_data_override=notion_data,
+            deadline=deadline,
         )
 
         q_exp = generate_mixed_test(
@@ -2193,6 +2197,7 @@ async def evaluation_endpoint(
             n_qro=split(n_exp)[1],
             n_steps=split(n_exp)[2],
             notion_data_override=notion_data,
+            deadline=deadline,
         )
 
         questions = q_bas + q_sol + q_exp

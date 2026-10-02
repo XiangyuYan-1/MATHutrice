@@ -124,21 +124,31 @@ def post_process(question: dict) -> dict:
 #     return generate_test(notion, niveau, n, generate_qcm_question)
 
 
-def generate_qcm_question(notion_nom: str, competence: dict) -> dict | None:
+def generate_qcm_question(
+    notion_nom: str, competence: dict, deadline=None
+) -> dict | None:
     """Génère une question QCM validée à partir d'une compétence déjà choisie."""
 
     prompt = build_prompt(notion_nom=notion_nom, competence=competence)
 
-    return call_mistral(prompt, notion_nom, parse_and_validate, post_process)
+    return call_mistral(
+        prompt,
+        notion_nom,
+        parse_and_validate,
+        post_process,
+        deadline=deadline,
+    )
 
 
-def generate_qcm_test(notion_nom: str, competences: list[dict]) -> list[dict]:
+def generate_qcm_test(
+    notion_nom: str, competences: list[dict], deadline=None
+) -> list[dict]:
     """Génère un test QCM à partir d'une liste de compétences déjà choisies."""
 
     questions = []
 
     for competence in competences:
-        question = generate_qcm_question(notion_nom, competence)
+        question = generate_qcm_question(notion_nom, competence, deadline=deadline)
 
         if question is not None:
             question["competence_cible"] = competence
