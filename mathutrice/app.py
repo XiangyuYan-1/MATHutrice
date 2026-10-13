@@ -173,6 +173,19 @@ app.add_middleware(
 )
 
 
+# The commit from which the container image was built. Outside a built image,
+# it remains "unknown".
+REVISION = os.getenv("REVISION", "unknown")
+
+
+@app.middleware("http")
+async def send_revision(request: Request, call_next):
+    """Identify the exact image that produced every HTTP response."""
+    response = await call_next(request)
+    response.headers["X-Revision"] = REVISION
+    return response
+
+
 # ------------------------------------------------------------------
 # Paths
 # ------------------------------------------------------------------
