@@ -41,7 +41,7 @@ jobs:
 
   deploy-staging:
     name: deploy to staging
-    needs: architecture
+    needs: [architecture, test]
     if: github.event_name == 'push' && github.ref == 'refs/heads/course-2026-fallback-ci'
     runs-on: ubuntu-latest
     permissions:
@@ -184,3 +184,18 @@ jobs:
           llm-api-key: ${{ secrets.LLM_API_KEY }}
           posthog-project-token: ${{ secrets.POSTHOG_PROJECT_TOKEN }}
           posthog-environment: production
+  test:
+    name: test
+    # A promotion builds nothing, so it has no source test to run.
+    if: github.event_name != 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: astral-sh/setup-uv@v10.1.0
+        with:
+          enable-cache: true
+
+      - run: uv sync
+
+      - run: uv run pytest

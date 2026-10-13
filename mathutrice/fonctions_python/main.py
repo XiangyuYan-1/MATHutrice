@@ -187,6 +187,7 @@ def generate_mixed_test(
     n_qro: int = 0,
     n_steps: int = 0,
     notion_data_override: dict = None,
+    deadline=None,
 ) -> list[dict]:
 
     notion_data = notion_data_override or REFERENTIEL[notion]
@@ -215,7 +216,9 @@ def generate_mixed_test(
     if n_qcm > 0:
         competences_qcm = [choisir_sans_repetition("qcm") for _ in range(n_qcm)]
         competences_qcm = [c for c in competences_qcm if c is not None]
-        qcms = generate_qcm_test(notion_nom, competences_qcm)
+        qcms = generate_qcm_test(
+            notion_nom, competences_qcm, deadline=deadline
+        )
         for q in qcms:
             q["type"] = "qcm"
             q["notion_nom"] = notion_nom
@@ -225,7 +228,9 @@ def generate_mixed_test(
     if n_qro > 0:
         competences_qro = [choisir_sans_repetition("qro") for _ in range(n_qro)]
         competences_qro = [c for c in competences_qro if c is not None]
-        qros = generate_qro_test(notion_nom, competences_qro)
+        qros = generate_qro_test(
+            notion_nom, competences_qro, deadline=deadline
+        )
         for q in qros:
             q["type"] = "qro"
             q["notion_nom"] = notion_nom
@@ -238,7 +243,9 @@ def generate_mixed_test(
             competences = choisir_sans_repetition("sbs")
             if competences:
                 competences_groupes_sbs.append(competences)
-        steps = generate_steps_test(notion_nom, competences_groupes_sbs)
+        steps = generate_steps_test(
+            notion_nom, competences_groupes_sbs, deadline=deadline
+        )
         for q in steps:
             q["type"] = "sbs"
             q["notion_nom"] = notion_nom

@@ -22,6 +22,7 @@ import json
 import logging
 
 from mathutrice.llm_client import client, MODEL
+from mathutrice.llm_deadline import LLMDeadline
 
 # from generator_test.lacune_evaluation.LLM_as_Evaluator import competences_dict
 # from main import REFERENTIEL
@@ -67,7 +68,11 @@ def parse_json(raw: str) -> dict:
 
 
 def call_mistral(
-    prompt: str, notion: str, parse_and_validate, post_process=None
+    prompt: str,
+    notion: str,
+    parse_and_validate,
+    post_process=None,
+    deadline: LLMDeadline | None = None,
 ) -> dict | None:
     """
     Appelle Mistral avec retry automatique (MAX_RETRIES tentatives).
@@ -83,10 +88,14 @@ def call_mistral(
     """
     for attempt in range(1, MAX_RETRIES + 1):
         try:
-            response = client.chat.completions.create(
-                model=MODEL, messages=[{"role": "user", "content": prompt}]
-            )
-            raw = response.choices[0].message.content
+            messages = [{"role": "user", "content": prompt}]
+            if deadline is None:
+                response = client.chat.completions.create(
+                    model=MODEL, messages=messages
+                )
+                raw = response.choices[0].message.content
+            else:
+                raw = deadline.complete(messages)
             question = parse_and_validate(raw)
 
             if post_process:
