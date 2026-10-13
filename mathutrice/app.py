@@ -367,16 +367,6 @@ def get_current_user(request: Request):
     return request.session.get("user")
 
 
-@app.get("/lab/posthog-error")
-async def lab_posthog_error(request: Request):
-    """Temporary Lab 3 route proving staging error tracking and logs."""
-    if not get_current_user(request):
-        return JSONResponse(status_code=401, content={"detail": "Non connecté"})
-
-    logging.getLogger(__name__).info("Lab 3 staging proof route called")
-    raise RuntimeError("Lab 3 staging PostHog proof")
-
-
 # ------------------------------------------------------------------
 # Sign-in helpers
 # ------------------------------------------------------------------
