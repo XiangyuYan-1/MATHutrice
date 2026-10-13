@@ -155,6 +155,10 @@ LLM_BASE_URL=https://api.mistral.ai/v1
 LLM_MODEL=ministral-14b-latest
 ```
 
+Production may define the environment variable `LLM_BASE_URL` to use a
+different OpenAI-compatible relay. Staging keeps the Mistral endpoint above;
+when the production override is unset, production uses that endpoint too.
+
 The deployed SQLite database and uploaded PDFs live on the container's
 ephemeral filesystem. They are recreated or lost when App Service replaces or
 restarts the container. Staging, production, and a local run that share one

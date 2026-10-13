@@ -182,6 +182,7 @@ jobs:
           session-secret: ${{ secrets.SESSION_SECRET }}
           dev-login-key: ${{ secrets.DEV_LOGIN_KEY }}
           llm-api-key: ${{ secrets.LLM_API_KEY }}
+          llm-base-url: ${{ vars.LLM_BASE_URL || 'https://api.mistral.ai/v1' }}
           posthog-project-token: ${{ secrets.POSTHOG_PROJECT_TOKEN }}
           posthog-environment: production
   test:
