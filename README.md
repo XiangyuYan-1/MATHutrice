@@ -116,6 +116,40 @@ The first call answers `303` with a `Set-Cookie: session=…`. `role` is
 user's name, or one derived from the address. Add `-d 'key=…'` when
 `DEV_LOGIN_KEY` is set.
 
+## Deploying the fork to Azure App Service
+
+On every push to the fork's default branch, `course-2026-fallback-ci`, the
+`architecture` job runs first. Only a green run allows `deploy to staging` to
+build one container image, tag it with the commit SHA, push it to this fork's
+GHCR package, and deploy that exact tag to the staging App Service app. If the
+tag already exists, the workflow reuses it instead of building a second image.
+
+The image stores the commit as `REVISION`. MATHutrice returns it in the
+`X-Revision` response header, and the deploy waits until `/dev/login` returns
+HTTP 200 from that revision. A previous container that is still answering does
+not count as a successful deployment.
+
+Azure access and runtime configuration live in the `staging` GitHub
+Environment. Its variables are `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`,
+`AZURE_SUBSCRIPTION_ID`, `AZURE_RESOURCE_GROUP`, and `AZURE_WEBAPP_NAME`. Its
+secrets are `SESSION_SECRET`, `DEV_LOGIN_KEY`, and `LLM_API_KEY`. Every deploy
+writes the environment's values to App Service without printing them, together
+with these non-secret settings:
+
+```text
+AUTH_MODE=dev
+WEBSITES_PORT=8000
+WEBSITES_ENABLE_APP_SERVICE_STORAGE=false
+DATABASE_URL=sqlite:///./mathutrice.db
+LLM_BASE_URL=https://api.mistral.ai/v1
+LLM_MODEL=ministral-14b-latest
+```
+
+The deployed SQLite database and uploaded PDFs live on the container's
+ephemeral filesystem. They are recreated or lost when App Service replaces or
+restarts the container. Staging, production, and a local run that share one
+Mistral key also share its quota and rate limit.
+
 ## Layout
 
 ```
