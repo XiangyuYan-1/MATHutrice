@@ -1,0 +1,103 @@
+name: Deploy to App Service
+description: Run one immutable image on an App Service environment.
+
+inputs:
+  image:
+    description: Image tagged with the commit from which it was built.
+    required: true
+  resource-group:
+    description: Resource group containing the App Service app.
+    required: true
+  app-name:
+    description: App Service app for this environment.
+    required: true
+  session-secret:
+    description: This environment's SESSION_SECRET.
+    required: true
+  dev-login-key:
+    description: This environment's DEV_LOGIN_KEY.
+    required: true
+  llm-api-key:
+    description: Mistral API key exposed to MATHutrice as LLM_API_KEY.
+    required: true
+  llm-base-url:
+    description: OpenAI-compatible endpoint used by this environment.
+    required: false
+    default: https://api.mistral.ai/v1
+
+runs:
+  using: composite
+  steps:
+    # Write every runtime setting on every deploy. --output none prevents Azure
+    # CLI from echoing secret values into the workflow log.
+    - name: Write this environment's settings
+      shell: bash
+      env:
+        RESOURCE_GROUP: ${{ inputs.resource-group }}
+        APP_NAME: ${{ inputs.app-name }}
+        SESSION_SECRET: ${{ inputs.session-secret }}
+        DEV_LOGIN_KEY: ${{ inputs.dev-login-key }}
+        LLM_API_KEY: ${{ inputs.llm-api-key }}
+        LLM_BASE_URL: ${{ inputs.llm-base-url }}
+      run: |
+        az webapp config appsettings set \
+          --resource-group "$RESOURCE_GROUP" --name "$APP_NAME" --output none \
+          --settings \
+            AUTH_MODE=dev \
+            WEBSITES_PORT=8000 \
+            WEBSITES_ENABLE_APP_SERVICE_STORAGE=false \
+            DATABASE_URL=sqlite:///./mathutrice.db \
+            LLM_MODEL=ministral-14b-latest \
+            "SESSION_SECRET=$SESSION_SECRET" \
+            "DEV_LOGIN_KEY=$DEV_LOGIN_KEY" \
+            "LLM_BASE_URL=$LLM_BASE_URL" \
+            "LLM_API_KEY=$LLM_API_KEY"
+
+    - name: Run the image
+      shell: bash
+      env:
+        RESOURCE_GROUP: ${{ inputs.resource-group }}
+        APP_NAME: ${{ inputs.app-name }}
+        IMAGE: ${{ inputs.image }}
+      run: |
+        az webapp config container set \
+          --resource-group "$RESOURCE_GROUP" --name "$APP_NAME" --output none \
+          --container-image-name "$IMAGE"
+        running=$(az webapp config show \
+          --resource-group "$RESOURCE_GROUP" --name "$APP_NAME" \
+          --query linuxFxVersion --output tsv)
+        if [ "$running" != "DOCKER|$IMAGE" ]; then
+          echo "$APP_NAME is set to $running, not $IMAGE" >&2
+          exit 1
+        fi
+        echo "$APP_NAME now runs $IMAGE"
+
+    # A plain 200 may still come from the previous container. Require the
+    # commit baked into the new image's X-Revision header as well.
+    - name: Wait until the new image answers
+      shell: bash
+      env:
+        APP_NAME: ${{ inputs.app-name }}
+        IMAGE: ${{ inputs.image }}
+      run: |
+        url="https://$APP_NAME.azurewebsites.net/dev/login"
+        revision="${IMAGE##*:}"
+        limit=700
+        start=$(date +%s)
+        attempt=0
+        while true; do
+          attempt=$((attempt + 1))
+          answer=$(curl -s -o /dev/null -w '%{http_code} %header{x-revision}' \
+            --max-time 30 "$url" || true)
+          elapsed=$(( $(date +%s) - start ))
+          if [ "$answer" = "200 $revision" ]; then
+            echo "$url answers 200 from $revision after ${elapsed}s"
+            exit 0
+          fi
+          echo "Attempt $attempt, ${elapsed}s: ${answer:-no response}; waiting for 200 $revision"
+          if [ "$elapsed" -ge "$limit" ]; then
+            echo "$url did not answer from $revision within ${limit}s" >&2
+            exit 1
+          fi
+          sleep 15
+        done
