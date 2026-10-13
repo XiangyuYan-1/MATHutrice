@@ -124,17 +124,27 @@ build one container image, tag it with the commit SHA, push it to this fork's
 GHCR package, and deploy that exact tag to the staging App Service app. If the
 tag already exists, the workflow reuses it instead of building a second image.
 
+Production changes only through a manually started Promotion. The Promotion
+reads this workflow's push runs on the default branch, newest first, skips each
+run whose `deploy to staging` job did not pass, and deploys the first successful
+run's existing image tag to production. It never rebuilds the image and never
+infers a tag from whichever container staging happens to run.
+
+```sh
+gh workflow run architecture.yml --ref course-2026-fallback-ci
+```
+
 The image stores the commit as `REVISION`. MATHutrice returns it in the
 `X-Revision` response header, and the deploy waits until `/dev/login` returns
 HTTP 200 from that revision. A previous container that is still answering does
 not count as a successful deployment.
 
-Azure access and runtime configuration live in the `staging` GitHub
-Environment. Its variables are `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`,
-`AZURE_SUBSCRIPTION_ID`, `AZURE_RESOURCE_GROUP`, and `AZURE_WEBAPP_NAME`. Its
+Azure access and runtime configuration live in the `staging` and `production`
+GitHub Environments. Their variables are `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`,
+`AZURE_SUBSCRIPTION_ID`, `AZURE_RESOURCE_GROUP`, and `AZURE_WEBAPP_NAME`. Their
 secrets are `SESSION_SECRET`, `DEV_LOGIN_KEY`, and `LLM_API_KEY`. Every deploy
-writes the environment's values to App Service without printing them, together
-with these non-secret settings:
+writes that environment's values to App Service without printing them,
+together with these non-secret settings:
 
 ```text
 AUTH_MODE=dev
