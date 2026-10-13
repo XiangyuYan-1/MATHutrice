@@ -94,6 +94,8 @@ jobs:
           session-secret: ${{ secrets.SESSION_SECRET }}
           dev-login-key: ${{ secrets.DEV_LOGIN_KEY }}
           llm-api-key: ${{ secrets.LLM_API_KEY }}
+          posthog-project-token: ${{ secrets.POSTHOG_PROJECT_TOKEN }}
+          posthog-environment: staging
 
   # A promotion reads workflow history rather than asking the staging app what
   # it runs. The newest push whose staging deploy passed is the newest image
@@ -180,3 +182,5 @@ jobs:
           session-secret: ${{ secrets.SESSION_SECRET }}
           dev-login-key: ${{ secrets.DEV_LOGIN_KEY }}
           llm-api-key: ${{ secrets.LLM_API_KEY }}
+          posthog-project-token: ${{ secrets.POSTHOG_PROJECT_TOKEN }}
+          posthog-environment: production

@@ -24,6 +24,16 @@ inputs:
     description: OpenAI-compatible endpoint used by this environment.
     required: false
     default: https://api.mistral.ai/v1
+  posthog-project-token:
+    description: This environment's PostHog project token.
+    required: true
+  posthog-host:
+    description: PostHog ingestion host.
+    required: false
+    default: https://eu.i.posthog.com
+  posthog-environment:
+    description: Environment attached to PostHog events and logs.
+    required: true
 
 runs:
   using: composite
@@ -39,6 +49,9 @@ runs:
         DEV_LOGIN_KEY: ${{ inputs.dev-login-key }}
         LLM_API_KEY: ${{ inputs.llm-api-key }}
         LLM_BASE_URL: ${{ inputs.llm-base-url }}
+        POSTHOG_PROJECT_TOKEN: ${{ inputs.posthog-project-token }}
+        POSTHOG_HOST: ${{ inputs.posthog-host }}
+        POSTHOG_ENVIRONMENT: ${{ inputs.posthog-environment }}
       run: |
         az webapp config appsettings set \
           --resource-group "$RESOURCE_GROUP" --name "$APP_NAME" --output none \
@@ -51,7 +64,10 @@ runs:
             "SESSION_SECRET=$SESSION_SECRET" \
             "DEV_LOGIN_KEY=$DEV_LOGIN_KEY" \
             "LLM_BASE_URL=$LLM_BASE_URL" \
-            "LLM_API_KEY=$LLM_API_KEY"
+            "LLM_API_KEY=$LLM_API_KEY" \
+            "POSTHOG_PROJECT_TOKEN=$POSTHOG_PROJECT_TOKEN" \
+            "POSTHOG_HOST=$POSTHOG_HOST" \
+            "POSTHOG_ENVIRONMENT=$POSTHOG_ENVIRONMENT"
 
     - name: Run the image
       shell: bash
