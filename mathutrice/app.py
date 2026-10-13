@@ -23,9 +23,16 @@ from mathutrice import models
 from mathutrice.referentiel import REFERENTIEL
 from mathutrice.seed import seed_missing
 import msal
+import posthog
+from posthog import Posthog
+from opentelemetry.sdk._logs import LoggerProvider, LoggingHandler
+from opentelemetry.sdk._logs.export import BatchLogRecordProcessor
+from opentelemetry.exporter.otlp.proto.http._log_exporter import OTLPLogExporter
+from opentelemetry.sdk.resources import Resource
 import uvicorn
 import shutil
 import os
+import logging
 import uuid
 import json
 import hmac
@@ -83,8 +90,71 @@ def cleanup_old_conversations():
         session.commit()
 
 
+# ------------------------------------------------------------------
+# Production signals — disabled only when all PostHog settings are unset
+# ------------------------------------------------------------------
+
+# Export only application records. Some third-party HTTP clients include full
+# request URLs in logs, and an endpoint URL can itself contain a credential.
+_posthog_log_filter = logging.Filter("mathutrice")
+
+
+def start_production_signals():
+    """Start PostHog exception capture and OpenTelemetry log forwarding."""
+    settings = {
+        "POSTHOG_PROJECT_TOKEN": (os.getenv("POSTHOG_PROJECT_TOKEN") or "").strip(),
+        "POSTHOG_HOST": (os.getenv("POSTHOG_HOST") or "").strip(),
+        "POSTHOG_ENVIRONMENT": (os.getenv("POSTHOG_ENVIRONMENT") or "").strip(),
+    }
+
+    if not any(settings.values()):
+        return None, None, None
+
+    for name, value in settings.items():
+        if not value:
+            raise ValueError(f"{name} missing")
+
+    token = settings["POSTHOG_PROJECT_TOKEN"]
+    host = settings["POSTHOG_HOST"].rstrip("/")
+    environment = settings["POSTHOG_ENVIRONMENT"]
+
+    client = Posthog(
+        token,
+        host=host,
+        enable_exception_autocapture=True,
+        super_properties={"environment": environment},
+    )
+    provider = LoggerProvider(
+        resource=Resource.create(
+            {
+                "service.name": "mathutrice",
+                "deployment.environment": environment,
+            }
+        )
+    )
+    provider.add_log_record_processor(
+        BatchLogRecordProcessor(
+            OTLPLogExporter(
+                endpoint=f"{host}/i/v1/logs",
+                headers={"Authorization": f"Bearer {token}"},
+            )
+        )
+    )
+
+    handler = LoggingHandler(logger_provider=provider)
+    handler.addFilter(_posthog_log_filter)
+    root_logger = logging.getLogger()
+    root_logger.setLevel(logging.INFO)
+    root_logger.addHandler(handler)
+
+    return client, provider, handler
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    posthog_client, log_provider, log_handler = start_production_signals()
+    app.state.posthog_client = posthog_client
+
     create_db_and_tables()
     seed_missing(engine)
 
@@ -95,6 +165,15 @@ async def lifespan(app: FastAPI):
     yield
 
     scheduler.shutdown()
+
+    if posthog_client:
+        posthog_client.shutdown()
+
+    if log_provider:
+        log_provider.shutdown()
+
+    if log_handler:
+        logging.getLogger().removeHandler(log_handler)
 
 
 # ------------------------------------------------------------------
@@ -163,6 +242,25 @@ from mathutrice.fonctions_python.type_questions.qro_generator import (  # noqa: 
 from mathutrice.lacune_evaluation.LLM_as_Evaluator import (  # noqa: E402
     diagnostiquer_depuis_competence,
 )
+
+
+# Added before SessionMiddleware, so it runs inside it and can read the session.
+# Exceptions leave the PostHog context unchanged and are re-raised by call_next.
+@app.middleware("http")
+async def posthog_context(request: Request, call_next):
+    posthog_client = getattr(request.app.state, "posthog_client", None)
+
+    if not posthog_client:
+        return await call_next(request)
+
+    with posthog.new_context(client=posthog_client):
+        user = request.session.get("user")
+
+        if user and user.get("email"):
+            posthog.identify_context(user["email"])
+
+        return await call_next(request)
+
 
 app.add_middleware(
         SessionMiddleware,
