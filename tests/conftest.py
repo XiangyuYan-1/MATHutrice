@@ -11,6 +11,12 @@ _load_dotenv_patcher.start()
 os.environ.setdefault("LLM_BASE_URL", "https://llm.invalid/v1")
 os.environ.setdefault("LLM_API_KEY", "test-only-key")
 os.environ.setdefault("LLM_MODEL", "test-only-model")
+os.environ.setdefault("SESSION_SECRET", "test-only-session-secret")
+os.environ.setdefault("AUTH_MODE", "dev")
+os.environ.setdefault("DATABASE_URL", "sqlite://")
+os.environ.setdefault("POSTHOG_PROJECT_TOKEN", "")
+os.environ.setdefault("POSTHOG_HOST", "")
+os.environ.setdefault("POSTHOG_ENVIRONMENT", "")
 
 
 def pytest_sessionfinish() -> None:

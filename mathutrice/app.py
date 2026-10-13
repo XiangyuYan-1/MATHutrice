@@ -150,6 +150,12 @@ def start_production_signals():
     return client, provider, handler
 
 
+def report_caught_exception(exception, posthog_client):
+    """Report an exception that the application catches and answers itself."""
+    if posthog_client:
+        posthog_client.capture_exception(exception)
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     posthog_client, log_provider, log_handler = start_production_signals()
@@ -1181,7 +1187,13 @@ async def chat_stream_endpoint(
     full_response = []
 
     def generate():
-        for chunk in chat_stream_with_history(history):
+        for chunk in chat_stream_with_history(
+            history,
+            report_failure=lambda exception: report_caught_exception(
+                exception,
+                getattr(request.app.state, "posthog_client", None),
+            ),
+        ):
             full_response.append(chunk)
             yield f"data: {chunk}\n\n"
 

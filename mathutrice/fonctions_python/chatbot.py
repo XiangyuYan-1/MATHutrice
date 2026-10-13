@@ -17,10 +17,14 @@ REGLES DE FORMATAGE OBLIGATOIRES:
 
 MAX_HISTORY = 10
 
-def chat_stream_with_history(history: list[dict]):
+
+def chat_stream_with_history(
+    history: list[dict], report_failure=lambda exception: None
+):
     """
     Streaming LLM avec historique complet depuis la DB.
     history = [{"role": "user"|"assistant", "content": "..."}]
+    report_failure receives a caught LLM exception before the user sees it.
     """
 
     # On ne garde que les 10 derniers
@@ -43,6 +47,7 @@ def chat_stream_with_history(history: list[dict]):
                     yield chunk
 
     except Exception as e:
+        report_failure(e)
         yield f"Erreur: {str(e)}"
 
     return full_response
